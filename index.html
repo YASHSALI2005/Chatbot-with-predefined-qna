@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chatbot</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ACPCE CHATBOT</h1>
+        <div id="chat-container"></div>
+        <input type="text" id="user-input" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    
+    <script>
+        function sendMessage() {
+            var userInput = document.getElementById("user-input").value;
+            appendMessage("You: " + userInput);
+            document.getElementById("user-input").value = "";
+
+            // Send user input to the server
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/get", true);
+            xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    appendMessage("ChatBot: " + response);
+                }
+            };
+            xhr.send(JSON.stringify({msg: userInput}));
+        }
+
+        function appendMessage(message) {
+            var chatContainer = document.getElementById("chat-container");
+            var messageDiv = document.createElement("div");
+            messageDiv.textContent = message;
+            chatContainer.appendChild(messageDiv);
+        }
+    </script>
+</body>
+</html>
