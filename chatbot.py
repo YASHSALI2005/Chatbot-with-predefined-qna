@@ -1,8 +1,17 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
+from pymongo import MongoClient
+from config import MONGODB_URI, DATABASE_NAME, COLLECTION_NAME
+import os
+
 app = Flask(__name__)
 
+# MongoDB connection
+client = MongoClient(MONGODB_URI)
+db = client[DATABASE_NAME]
+collection = db[COLLECTION_NAME]
+
 qa_pairs = {
-    "Hii":"Hello! How can i help you?",
+    "Hi my name is {name_string}":"Hello {name_string}! How can i help you?",
     "What is C?": "C refers to the C programming language, which is a widely used, efficient, and versatile programming language developed in the early 1970s. It is known for its simplicity, power, and direct access to hardware, making it suitable for system software, application development, and embedded systems.",
     "What is Python?":"Python is a high-level, interpreted programming language known for its simplicity and readability. It emphasizes code readability and has a clear, concise syntax, making it popular among beginners and experienced programmers alike. Python supports multiple programming paradigms and is widely used in web development, data analysis, artificial intelligence, scientific computing, and more.",
     "What is Frontend.": "the front end refers to the user interface and presentation layer of a software application or website. It includes everything that users interact with directly, such as web pages, graphical elements, buttons, forms, and menus. Front-end development involves creating these components using technologies like HTML, CSS, and JavaScript to ensure a seamless and engaging user experience.",
@@ -60,11 +69,18 @@ qa_pairs = {
 def get_response(user_input):
     user_input = user_input.lower()
     
+    # Search in MongoDB for matching question
+    result = collection.find_one({"Question": {"$regex": user_input, "$options": "i"}})
+    
+    if result:
+        return result["Answer"]
+    
+    # Fallback to hardcoded Q&A if MongoDB is empty
     for question, answer in qa_pairs.items():
         if user_input in question.lower():
             return answer
     
-    return "Sorry, I don't understand that."
+    return "Sorry, I don't understand that. Please contact admin to add this question."
 
 @app.route("/get", methods=["POST"])
 def get_bot_response():
@@ -75,6 +91,37 @@ def get_bot_response():
 @app.route("/")
 def home():
     return app.send_static_file("index.html")
+
+@app.route("/admin")
+def admin():
+    return render_template("admin.html")
+
+@app.route("/add_qa", methods=["POST"])
+def add_qa():
+    data = request.json
+    question = data.get("question")
+    answer = data.get("answer")
+    
+    if not question or not answer:
+        return jsonify({"error": "Question and answer are required"}), 400
+    
+    # Check if question already exists
+    existing = collection.find_one({"Question": question})
+    if existing:
+        return jsonify({"error": "Question already exists"}), 400
+    
+    # Insert new Q&A pair
+    result = collection.insert_one({
+        "Question": question,
+        "Answer": answer
+    })
+    
+    return jsonify({"message": "Q&A pair added successfully", "id": str(result.inserted_id)})
+
+@app.route("/get_all_qa", methods=["GET"])
+def get_all_qa():
+    qa_pairs = list(collection.find({}, {"_id": 0}))
+    return jsonify(qa_pairs)
 
 if __name__ == "__main__":
     app.run(debug=True)

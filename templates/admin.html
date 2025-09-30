@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Chatbot Q&A Management</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .qa-list {
+            margin-top: 30px;
+        }
+        .qa-item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .qa-question {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .qa-answer {
+            color: #666;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .nav-links {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            color: #007bff;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Chatbot Admin Panel</h1>
+        
+        <div class="nav-links">
+            <a href="/">← Back to Chatbot</a>
+        </div>
+
+        <div class="form-section">
+            <h2>Add New Q&A Pair</h2>
+            <form id="qaForm">
+                <div class="form-group">
+                    <label for="question">Question:</label>
+                    <input type="text" id="question" name="question" required placeholder="Enter the question...">
+                </div>
+                <div class="form-group">
+                    <label for="answer">Answer:</label>
+                    <textarea id="answer" name="answer" required placeholder="Enter the answer..."></textarea>
+                </div>
+                <button type="submit">Add Q&A Pair</button>
+            </form>
+            <div id="message"></div>
+        </div>
+
+        <div class="qa-list">
+            <h2>Existing Q&A Pairs</h2>
+            <button onclick="loadQA()" style="margin-bottom: 15px;">Refresh List</button>
+            <div id="qaList"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('qaForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const question = document.getElementById('question').value;
+            const answer = document.getElementById('answer').value;
+            
+            fetch('/add_qa', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    question: question,
+                    answer: answer
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const messageDiv = document.getElementById('message');
+                if (data.error) {
+                    messageDiv.innerHTML = `<div class="message error">${data.error}</div>`;
+                } else {
+                    messageDiv.innerHTML = `<div class="message success">${data.message}</div>`;
+                    document.getElementById('qaForm').reset();
+                    loadQA(); // Refresh the list
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').innerHTML = `<div class="message error">Error: ${error.message}</div>`;
+            });
+        });
+
+        function loadQA() {
+            fetch('/get_all_qa')
+            .then(response => response.json())
+            .then(data => {
+                const qaList = document.getElementById('qaList');
+                if (data.length === 0) {
+                    qaList.innerHTML = '<p>No Q&A pairs found. Add some using the form above!</p>';
+                } else {
+                    qaList.innerHTML = data.map(qa => `
+                        <div class="qa-item">
+                            <div class="qa-question">Q: ${qa.question}</div>
+                            <div class="qa-answer">A: ${qa.answer}</div>
+                        </div>
+                    `).join('');
+                }
+            })
+            .catch(error => {
+                document.getElementById('qaList').innerHTML = `<div class="message error">Error loading Q&A pairs: ${error.message}</div>`;
+            });
+        }
+
+        // Load Q&A pairs on page load
+        loadQA();
+    </script>
+</body>
+</html>
